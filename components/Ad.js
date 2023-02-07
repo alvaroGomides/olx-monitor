@@ -1,12 +1,12 @@
 'use strict';
 
-const path = require( 'path' )
-const config = require( '../config' )
-const Database = require( 'sqlite-async' )
-const notifier = require( './Notifier' )
+import path from 'path';
+import config from '../config.js';
+import { Database } from 'sqlite-async';
+import { sendNotification } from './Notifier.js';
+import { fileURLToPath } from 'url';
 
-
-class Ad{
+export default class Ad{
     
     constructor( ad, firstTimeRunning ){
         this.id      = ad.id
@@ -24,8 +24,8 @@ class Ad{
     process = async () => {
 
         try {
-
-            this.db = await Database.open( path.resolve( '.', config.dbPath ) );
+            const dbUrl = path.resolve( '.', config.dbPath );
+            this.db = await Database.open( dbUrl );
 
         } catch (error) {
 
@@ -68,7 +68,7 @@ class Ad{
            if( !this.firstTimeRunning ){
 
                 const msg = 'New '+ this.searchTerm + ' ad found!\n' + this.title + ' - R$' + this.price + '\n\n' + this.url;
-                await notifier.sendNotification( msg )
+                await sendNotification( msg )
                 
             }
             
@@ -135,11 +135,9 @@ class Ad{
                 const msg = 'Price drop found! ' + decreasePercentage +'% OFF!\n' + 
                 'From R$' + savedEntry.price + ' to R$' + this.price + '\n\n' + this.url
 
-                return await notifier.sendNotification( msg )
+                return await sendNotification( msg )
     
             }
         }
     }
 }
-
-module.exports = Ad;

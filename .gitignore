@@ -6,3 +6,4 @@ refs-todo.todo
 scrapper.log
 raw-index.js
 config.js
+node_modules/

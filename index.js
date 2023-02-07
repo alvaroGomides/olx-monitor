@@ -1,14 +1,17 @@
-const config = require('./config')
-const axios = require('axios')
-const cheerio = require('cheerio')
-const Database = require('sqlite-async')
-const fs = require('fs')
-const path = require('path')
-const url = require('url')
-
-const Ad = require('./components/Ad.js')
+import config from './config.js';
+import axios from 'axios';
+import cheerio from 'cheerio';
+import fs from 'fs';
+import path from 'path';
+import url from 'url';
+import { fileURLToPath } from 'url';
+import Ad from './components/Ad.js';
+import { Database } from 'sqlite-async';
+import Logger from 'simple-node-logger';
 
 let firstTimeRunning = true
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // checks for a log file was already created indicating that the program already ran
 if ( fs.existsSync( path.join( __dirname, config.logPath ) ) ) {
@@ -16,7 +19,7 @@ if ( fs.existsSync( path.join( __dirname, config.logPath ) ) ) {
 }
 
 // create a stdout and file logger
-const log = require('simple-node-logger').createSimpleLogger( path.join( __dirname, config.logPath ) );
+const log = Logger.createSimpleLogger( path.join( __dirname, config.logPath ) );
 
 // check if the SQLite was already created
 if ( !fs.existsSync( path.join( __dirname, config.dbPath ) ) ) {
@@ -35,17 +38,7 @@ let minPrice, maxPrice;
 const main = async() =>{
 
 	log.info('Program started');
-
-	try {
-
-        db = await Database.open( path.join( __dirname, config.dbPath ) );
-        
-	} catch (error) {
-
-		log.error( error );
-        throw Error('can not access sqlite database');
-        
-	}
+	const db = await Database.open( path.join( __dirname, config.dbPath ) );
  
 	for( let i=0; i<config.urls.length; i++ ){
 
@@ -89,12 +82,14 @@ async function scrapper( address ){
 	    for( let i=0; i< $ads.length; i++ )
 	    {
 
-	    	const element = $ads[i]
+	    	const element = $ads[i];
 
-	    	const id      = $(element).children('a').attr('data-lurker_list_id');
-	    	const url     = $(element).children('a').attr('href');
+	    	const id      = $(element).find('a').attr('data-lurker_list_id');
+	    	const url     = $(element).find('a').attr('href');
 	    	const title   = $(element).find('h2').first().text().trim();
-	    	const price   = parseInt( $(element).find('p').first().text().replace('R$ ', '').replace('.', '') );
+			const priceElement = $(element).find('span[color="--color-neutral-130"]').first();
+			const priceValue = priceElement.text().replace('R$ ', '').replace('.', '');
+	    	const price   = !parseInt( priceValue ) ? 0 : parseInt( priceValue );
 	    	const created = new Date().getTime();
 
 	    	// some elements found in the ads selection don't have an url
@@ -109,9 +104,8 @@ async function scrapper( address ){
 		    		price,
 		    		created,
                     searchTerm
-                }
-                
-				try {
+                }                
+				try {	
                     const ad = new Ad( result, firstTimeRunning )
 
 			    } catch ( error ) {
@@ -131,10 +125,10 @@ async function scrapper( address ){
 async function createdb() {
 
 	log.info( 'Creating a new database' );
+	const db = await Database.open( path.join( __dirname, config.dbPath ) );
 
 	try {
 
-        db = await Database.open( path.join( __dirname, config.dbPath ) );
         
 	} catch ( error ) {
 
